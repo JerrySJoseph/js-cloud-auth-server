@@ -9,7 +9,7 @@ const JWT= require('jsonwebtoken');
  */
 
 const sDefaultExpirationTime = "1h";
-const sDefaultRefreshExpirationTime = "48h";
+const sDefaultRefreshExpirationTime = "24h";
 const sDefaultIssuerName = "js-cloud-auth-api";
 const secret='sdfijn93nd-nef3-128fb2872bfcybcdfw2343ej9fun280n20f8yn27n20208c280n7208c7b8bv2087b'
 
@@ -54,14 +54,7 @@ const verfifyAccessToken=(token)=>{
             JWT.verify(token,secret,(err,payload)=>{
                     if(err)
                     {
-                      const msg =
-                        err.name === "JsonWebTokenError"
-                          ? {
-                              name: "JsonWebTokenError",
-                              message: "Unauthorized",
-                            }
-                          : err;
-                      return reject(msg);
+                        return reject(parseError(err));
                     }
                 resolve(payload);
             })
@@ -72,6 +65,24 @@ const verfifyAccessToken=(token)=>{
         }
          
     })
+}
+
+function parseError(err) {
+  let msg = null;
+  if (err.name === "TokenExpiredError")
+    msg = {
+      name: "Token Expired",
+      message:
+        "Your token is Expired. Try refreshing the tokens or login again",
+    };
+  else if (err.name === "JsonWebTokenError")
+    msg = {
+      name: "Token Error",
+      message: "Token verification resulted in failure",
+    };
+  else msg = err;
+
+  return msg;
 }
 
 /**
@@ -101,10 +112,8 @@ const verfifyRefreshToken=(token)=>{
     return new Promise((resolve,reject)=>{
         try{
             JWT.verify(token,secret,(err,payload)=>{
-                    if(err)
-                    {
-                        const msg=err.name==='JsonWebTokenError'?{name:'JsonWebTokenError',message:'Unauthorized'}:err
-                        return reject(msg);
+                    if (err) {
+                      return reject(parseError(err));
                     }
                 resolve(payload);
             })

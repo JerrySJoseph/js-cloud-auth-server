@@ -2,51 +2,92 @@ const tokenDb = require("mongoose").connection.collection("token_store");
 const ObjectId = require("mongodb").ObjectId;
 const jwt =require('../../helpers/jwt_helper');
 
-async function saveToken(_id,access_token,refresh_token){
-return new Promise(async(resolve,reject)=>{
+//Generate Access and refresh Tokens then save to Token store
+async function genAccessToken(profile) {
+
+  return new Promise(async (resolve,reject)=>{
     try {
-        const result = await tokenDb.replaceOne(
-          { _id: ObjectId(_id) },
-          { access_token, refresh_token },
-          {upsert:true}
-        );
-        if(result)
-        resolve(result.ops[0]);
+      const accessToken = await jwt.signAccessToken(profile);
+      const refreshToken = await jwt.signRefreshToken(profile);
+      const result = await saveToken(profile["_id"], accessToken, refreshToken);
+      resolve({
+        success: true,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        message: "Access and Refresh Tokens generated.",
+      });
     } catch (error) {
-        reject(error);
+      reject(error);
+    }
+  })
+}
+//Validating accessTokens
+async function validateAccesToken(accessToken) {
+  return new Promise(async  (resolve,  reject)  =>  {
+    try {
+      const payload = await jwt.verfifyAccessToken(accessToken);
+      if(payload)
+      {
+        //conforming this was the token issued
+        const tokenexists = await tokenDb.findOne({
+          _id: ObjectId(payload["_id"]),
+          accessToken: accessToken,
+        });
+        if (!tokenexists)
+          reject({
+            name: "Token Mismatch",
+            message: "issued token mismatch. Please login/refresh for new tokens",
+          });
+        resolve(payload);
+      }
+      
+
+    } catch (error) {
+      reject(error);
+    }
+  });;
+}
+//validating refreshTokens
+async function refreshTokens(refreshToken)
+{
+  return new Promise(async(resolve,reject)=>{
+    try {
+      const payload = await jwt.verfifyRefreshToken(refreshToken);
+      if(payload)
+      {
+        //conforming this was the token issued
+        const tokenexists=await tokenDb.findOne({_id:ObjectId(payload['_id']),refreshToken:refreshToken})
+        if(!tokenexists)
+          reject({
+            name:'Token Mismatch',
+            message:'issued token mismatch. Please login again for new tokens'
+          })
+        else
+          resolve(await genAccessToken(payload));
+      }
+    } catch (error) {
+      reject(error)
     }
     
-})
+  })
 }
-async function validateRefreshToken(_id,refresh_token){
-    return new Promise(async (resolve, reject) => {
-      try {
-        const result = await tokenDb.findOne(
-          { _id: ObjectId(_id),refresh_token}
-        );
-        if (result)
-         {
-           resolve(true);
-         }
-      } catch (error) {
-        reject(error);
-      }
-    });
-}
-async function validateAccessToken(_id, access_token) {
+//Save to Token store
+async function saveToken(_id,access_token,refresh_token){
   return new Promise(async (resolve, reject) => {
     try {
-      const result = await tokenDb.findOne({
-        _id: ObjectId(_id),
-        access_token,
-        refresh_token,
-      });
-      if (result) resolve(true);
+      const result = await tokenDb.replaceOne(
+        { _id: ObjectId(_id) },
+        { aceessToken: access_token, refreshToken: refresh_token },
+        { upsert: true }
+      );
+      if (result) resolve(result.ops[0]);
     } catch (error) {
       reject(error);
     }
   });
 }
+
+//Sign out
 async function singOut(_id)
 {
   return new Promise(async (resolve,reject)=>{
@@ -67,4 +108,4 @@ async function singOut(_id)
   })
 }
 
-module.exports = { saveToken, validateRefreshToken,validateAccessToken, singOut };
+module.exports = { genAccessToken, validateAccesToken, singOut, refreshTokens };
