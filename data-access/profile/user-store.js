@@ -34,4 +34,54 @@ async function updateProfile(id, newUser) {
     }
   });
 }
-module.exports = { signInOrCreate, updateProfile };
+
+async function signInEmail({ email, password }) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const user = await profiledb.findOne({ email, password });
+      if (!user)
+        reject({
+          success: false,
+          message: "User not found with this email and password",
+        });
+      else resolve(user);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+async function createUserEmail(user) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const userExists = await profiledb.findOne({ email: user["email"] });
+      if (userExists)
+        reject({
+          success: false,
+          message:
+            "User exists with same email ID. Try logging in to that account",
+        });
+      else {
+        resolve((await profiledb.insertOne(user)).ops[0]);
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+async function deleteUser({ _id }) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const result = await profiledb.findOneAndDelete({ _id: ObjectId(_id) });
+      resolve(result.value);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+module.exports = {
+  signInOrCreate,
+  updateProfile,
+  signInEmail,
+  createUserEmail,
+  deleteUser,
+};

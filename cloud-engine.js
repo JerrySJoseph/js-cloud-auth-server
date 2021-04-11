@@ -1,14 +1,14 @@
 const deviceConnection = require("./connections/client-connection");
-const googleSign = require("./google-sign");
 const db = require("./db/auth-database");
-const jwt=require('./helpers/jwt_helper')
-const auth=require('./data-access/profile/auth-Google');
-const authEmail=require('./data-access/profile/auth-Email');
 const tokenStore = require("./data-access/token/token-store");
-
 const handler = require("./handlers/client-request-handler");
+const server =require('./handlers/server-request-handler');
 
+//Saving instance of Socket for sending custom server events 
 let io=null;
+
+let userBase={};
+
 //Initialize Auth Engine 
 const initEngine = (app, PORT) => {
   return new Promise( async (resolve, reject) => {
@@ -35,14 +35,9 @@ function registerEvents(io) {
     //Consoles a message when a new client connects to the server
     console.log("Connected to Client at socket: " + socket.id);
 
-    //Fires when a client disconnects
-    socket.on("disconnect", () => {
-      console.log("Disconnected");
-    });
-
     //Fires when an auth-flow is intiated
     socket.on("auth-flow", async(data, ack) => {
-      handleAuthFlow(data,ack);
+      handleAuthFlow(data,ack,socket);
     });
 
     //Fires when a user profile update is requested
@@ -53,84 +48,80 @@ function registerEvents(io) {
     socket.on('refresh-token',(data,ack)=>{
       handleRefreshToken(data,ack)
     })
+    socket.on('client-handshake',(data,ack)=>{
+      handleClientHandshake(data,ack);
+    })
     socket.on('sign-out',async (_id,ack)=>{
-      
-
-      tokenStore.singOut(_id)
-      .then(result=>ack('user signed out',true))
-      .catch(error=>ack(error['message'],false));
-
-
+      handler.handleSignOut(_id, ack);
     })
   });
 }
 
 //Handling all auth flows
-async function handleAuthFlow(data,ack)
+async function handleAuthFlow(data,ack,socket)
 {
   //used for creating Ack responses
   let message = "unknown request";
   let ackObject = null;
-  let accessToken=null;
-  let refreshToken=null;
-
+  let accessToken = null;
+  let refreshToken = null;
+  let userID = null;
   console.log("auth-flow recieved");
 
   //Parsing String JSON to POJO
   data = JSON.parse(data);
 
   //Handling google Sign IN
-  if (data.authType === "Google")
-  {
-     try{
-        const user = await handler.handleGoogleSignIn(data["idToken"]);
-        console.log(user);
-        if (user) {
-          ackObject = JSON.stringify(user);
-          message = "User signed in with Google";
-          const tokens = await tokenStore.genAccessToken(user);
-          accessToken = tokens.accessToken;
-          refreshToken = tokens.refreshToken;
-        }
-    }catch(error)
-    {
+  if (data.authType === "Google") {
+    try {
+      const user = await handler.handleGoogleSignIn(data["idToken"]);
+      console.log(user);
+      if (user) {
+        ackObject = JSON.stringify(user);
+        message = "User signed in with Google";
+        const tokens = await tokenStore.genAccessToken(user);
+        accessToken = tokens.accessToken;
+        refreshToken = tokens.refreshToken;
+        userID = user["_id"];
+        userBase[userID] = socket.id;
+        console.log(userBase);
+      }
+    } catch (error) {
       ackObject = null;
       message = error.message;
     }
-  } 
+  }
   //Fb
-  else if (data.authType === "Facebook")
-  {
+  else if (data.authType === "Facebook") {
   }
   //Email
-  else if (data.authType === "Email") 
-  {
-    try
-    {
-      const user = await EmailSignIn(data);
-      
+  else if (data.authType === "Email") {
+    try {
+      const user = await handler.handleEmailSignIn(data);
+
       if (user) {
-         ackObject = JSON.stringify(user);
-         message = "User signed in with Email";
-         const tokens = await tokenStore.genAccessToken(user);
-         accessToken = tokens.accessToken;
-         refreshToken = tokens.refreshToken;
-        
+        ackObject = JSON.stringify(user);
+        message = "User signed in with Email";
+        const tokens = await tokenStore.genAccessToken(user);
+        accessToken = tokens.accessToken;
+        refreshToken = tokens.refreshToken;
       }
-    }catch(error)
-    {
-       ackObject = null;
-       message = error.message;
+    } catch (error) {
+      ackObject = null;
+      message = error.message;
     }
-  } 
-  else if (data.authType === "Phone") 
-  {
-  }
-  else 
-  {
+  } else if (data.authType === "Phone") {
+  } else {
   }
 
-ack(message,ackObject,accessToken,refreshToken);
+  ack(message, ackObject, accessToken, refreshToken);
+
+  //Fires when a client disconnects
+  socket.on("disconnect", () => {
+    console.log(userID+' disconnected')
+    delete userBase[userID];
+    console.log(userBase);
+  });
 }
 
 //Handling user profile updates
@@ -148,7 +139,7 @@ async function handleUserUpdate(data,ack){
   }
   
 }
-
+//handling refreshTokens
 async function handleRefreshToken(data,ack){
   try {
     const tokens=await tokenStore.refreshTokens(data)
@@ -159,6 +150,10 @@ async function handleRefreshToken(data,ack){
   }
   
 
+}
+
+async function handleClientHandshake(data,ack){
+  return handler.handleClientHandshake(data,ack)
 }
 
 //Facebook Sign In flow
@@ -195,13 +190,20 @@ function EmailSignIn(userObj){
   });
 }
 
-//Anonymous Sign In Flow
-function GuestSignIn(){
 
-}
-
-function updateUser(data)
+function revokeAccess(id)
 {
+  return new Promise(async(resolve,reject)=>{
+    try {
+      const signout=await server.revokeAccessByID(id);
+      if(signout)
+      {
+
+      }
+    } catch (error) {
+      reject(error);
+    }
+  })
 }
 
 
