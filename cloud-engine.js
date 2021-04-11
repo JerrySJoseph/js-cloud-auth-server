@@ -31,28 +31,31 @@ const initEngine = (app, PORT) => {
 function registerEvents(io) {
   //To listen to messages
   io.on("connection", (socket) => {
-    
     //Consoles a message when a new client connects to the server
     console.log("Connected to Client at socket: " + socket.id);
 
     //Fires when an auth-flow is intiated
-    socket.on("auth-flow", async(data, ack) => {
-      handleAuthFlow(data,ack,socket);
+    socket.on("auth-flow", async (data, ack) => {
+      handleAuthFlow(data, ack, socket);
     });
 
     //Fires when a user profile update is requested
-    socket.on("js-cloud-user-update",(data, ack) => {
-      handleUserUpdate(data,ack)
+    socket.on("js-cloud-user-update", (data, ack) => {
+      handleUserUpdate(data, ack);
     });
 
-    socket.on('refresh-token',(data,ack)=>{
-      handleRefreshToken(data,ack)
-    })
-    socket.on('client-handshake',(data,ack)=>{
-      handleClientHandshake(data,ack);
-    })
-    socket.on('sign-out',async (_id,ack)=>{
+    socket.on("refresh-token", (data, ack) => {
+      handleRefreshToken(data, ack);
+    });
+    socket.on("client-handshake", (data, ack) => {
+      handleClientHandshake(data, ack, socket);
+    });
+    socket.on("sign-out", async (_id, ack) => {
       handler.handleSignOut(_id, ack);
+    });
+    socket.on('invoke',(data,ack)=>{
+      console.log(data)
+      revokeAccess(data)
     })
   });
 }
@@ -65,7 +68,7 @@ async function handleAuthFlow(data,ack,socket)
   let ackObject = null;
   let accessToken = null;
   let refreshToken = null;
-  let userID = null;
+  let user = null;
   console.log("auth-flow recieved");
 
   //Parsing String JSON to POJO
@@ -74,7 +77,7 @@ async function handleAuthFlow(data,ack,socket)
   //Handling google Sign IN
   if (data.authType === "Google") {
     try {
-      const user = await handler.handleGoogleSignIn(data["idToken"]);
+      user = await handler.handleGoogleSignIn(data);
       console.log(user);
       if (user) {
         ackObject = JSON.stringify(user);
@@ -82,9 +85,6 @@ async function handleAuthFlow(data,ack,socket)
         const tokens = await tokenStore.genAccessToken(user);
         accessToken = tokens.accessToken;
         refreshToken = tokens.refreshToken;
-        userID = user["_id"];
-        userBase[userID] = socket.id;
-        console.log(userBase);
       }
     } catch (error) {
       ackObject = null;
@@ -97,7 +97,7 @@ async function handleAuthFlow(data,ack,socket)
   //Email
   else if (data.authType === "Email") {
     try {
-      const user = await handler.handleEmailSignIn(data);
+      user = await handler.handleEmailSignIn(data);
 
       if (user) {
         ackObject = JSON.stringify(user);
@@ -105,6 +105,7 @@ async function handleAuthFlow(data,ack,socket)
         const tokens = await tokenStore.genAccessToken(user);
         accessToken = tokens.accessToken;
         refreshToken = tokens.refreshToken;
+        handler.registerUserToDevice(data["device"]["clientID"], user["_id"]);
       }
     } catch (error) {
       ackObject = null;
@@ -115,12 +116,9 @@ async function handleAuthFlow(data,ack,socket)
   }
 
   ack(message, ackObject, accessToken, refreshToken);
-
   //Fires when a client disconnects
   socket.on("disconnect", () => {
-    console.log(userID+' disconnected')
-    delete userBase[userID];
-    console.log(userBase);
+    handler.removeDevice(data["device"]["clientID"]);
   });
 }
 
@@ -152,8 +150,8 @@ async function handleRefreshToken(data,ack){
 
 }
 
-async function handleClientHandshake(data,ack){
-  return handler.handleClientHandshake(data,ack)
+async function handleClientHandshake(data, ack, socket) {
+  return handler.handleClientHandshake(data, ack, socket);
 }
 
 //Facebook Sign In flow
@@ -193,17 +191,13 @@ function EmailSignIn(userObj){
 
 function revokeAccess(id)
 {
-  return new Promise(async(resolve,reject)=>{
-    try {
-      const signout=await server.revokeAccessByID(id);
-      if(signout)
-      {
-
-      }
-    } catch (error) {
-      reject(error);
-    }
-  })
+  const sid = handler.getSocketIdFor(id);
+  console.log(sid)
+  if(sid)
+  {
+    io.to(sid).emit('sign-out','this is server signOut event');
+  }  
+ 
 }
 
 
