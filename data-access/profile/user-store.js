@@ -50,6 +50,7 @@ async function signInEmail({ email, password }) {
     }
   });
 }
+
 async function createUserEmail(user) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -68,6 +69,7 @@ async function createUserEmail(user) {
     }
   });
 }
+
 async function deleteUser({ _id }) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -78,10 +80,16 @@ async function deleteUser({ _id }) {
     }
   });
 }
+
+async function fetchUserById(id) {
+  return profiledb.findOne({ _id: ObjectId(id) });
+}
+
 module.exports = {
   signInOrCreate,
   updateProfile,
   signInEmail,
   createUserEmail,
   deleteUser,
+  fetchUserById,
 };

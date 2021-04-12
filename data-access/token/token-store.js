@@ -21,13 +21,15 @@ async function genAccessToken(profile) {
     }
   })
 }
+
 //Validating accessTokens
 async function validateAccesToken(accessToken) {
   return new Promise(async  (resolve,  reject)  =>  {
     try {
       const payload = await jwt.verfifyAccessToken(accessToken);
-      if(payload)
-      {
+
+      if (payload) {
+      
         //conforming this was the token issued
         const tokenexists = await tokenDb.findOne({
           _id: ObjectId(payload["_id"]),
@@ -36,12 +38,11 @@ async function validateAccesToken(accessToken) {
         if (!tokenexists)
           reject({
             name: "Token Mismatch",
-            message: "issued token mismatch. Please login/refresh for new tokens",
+            message:
+              "issued token mismatch. Please login/refresh for new tokens",
           });
         resolve(payload);
       }
-      
-
     } catch (error) {
       reject(error);
     }
@@ -77,7 +78,7 @@ async function saveToken(_id,access_token,refresh_token){
     try {
       const result = await tokenDb.replaceOne(
         { _id: ObjectId(_id) },
-        { aceessToken: access_token, refreshToken: refresh_token },
+        { accessToken: access_token, refreshToken: refresh_token },
         { upsert: true }
       );
       if (result) resolve(result.ops[0]);

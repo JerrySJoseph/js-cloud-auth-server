@@ -7,10 +7,9 @@ const server =require('./handlers/server-request-handler');
 //Saving instance of Socket for sending custom server events 
 let io=null;
 
-let userBase={};
-
 //Initialize Auth Engine 
 const initEngine = (app, PORT) => {
+  //Returns a promise resolving to a WebSocket
   return new Promise( async (resolve, reject) => {
       try {
            io = await deviceConnection.initConnection(app, PORT);
@@ -20,7 +19,7 @@ const initEngine = (app, PORT) => {
             .then(() => console.log("Connected to Auth Database"))
             .catch((err) => console.log(err));
 
-           resolve();
+           resolve(io);
       } catch (error) {
           reject(error);
       }
@@ -29,8 +28,10 @@ const initEngine = (app, PORT) => {
 };
 
 function registerEvents(io) {
-  //To listen to messages
+  
+  //Listening to events
   io.on("connection", (socket) => {
+
     //Consoles a message when a new client connects to the server
     console.log("Connected to Client at socket: " + socket.id);
 
@@ -44,19 +45,35 @@ function registerEvents(io) {
       handleUserUpdate(data, ack);
     });
 
+    //Fires when a user request for refreshing token
     socket.on("refresh-token", (data, ack) => {
+      console.log('refresh-recieved');
       handleRefreshToken(data, ack);
     });
+    
+    //Fires on client handshake (Triggered automatically from client SDK when device connects to server)
     socket.on("client-handshake", (data, ack) => {
       handleClientHandshake(data, ack, socket);
     });
+
+    socket.on("auth-handshake",(data,ack)=>{
+      handleAuthHandshake(data,ack);
+    })
+
+    //Fires on sign-out (This triggers an automated signout sequence, removes all issued tokens from database)
     socket.on("sign-out", async (_id, ack) => {
       handler.handleSignOut(_id, ack);
     });
-    socket.on('invoke',(data,ack)=>{
-      console.log(data)
-      revokeAccess(data)
+
+    socket.on('cloud-sync',(accessToken,ack)=>{
+      handleCloudSync(accessToken,ack);
     })
+    
+    //This event is for testing functionalities. Invoke any random  function inside the callblock
+    socket.on("invoke", (data, ack) => {
+      console.log(data);
+      revokeAccess(data);
+    });
   });
 }
 
@@ -137,6 +154,7 @@ async function handleUserUpdate(data,ack){
   }
   
 }
+
 //handling refreshTokens
 async function handleRefreshToken(data,ack){
   try {
@@ -150,10 +168,21 @@ async function handleRefreshToken(data,ack){
 
 }
 
+//handling client handshake for exchange of deviceId and socketid
 async function handleClientHandshake(data, ack, socket) {
   return handler.handleClientHandshake(data, ack, socket);
 }
 
+async function handleCloudSync(accessToken,ack)
+{
+  return handler.handleCloudSync(accessToken,ack); 
+
+}
+
+async function handleAuthHandshake(data,ack){
+  
+  handler.handleAuthHandshake(data,ack);
+}
 //Facebook Sign In flow
 function facebookSignIn(){
 }
@@ -188,17 +217,17 @@ function EmailSignIn(userObj){
   });
 }
 
-
 function revokeAccess(id)
-{
+{ 
+  handler.handleRevokeAccess(id);
   const sid = handler.getSocketIdFor(id);
   console.log(sid)
   if(sid)
   {
-    io.to(sid).emit('sign-out','this is server signOut event');
+    io.to(sid).emit("revoke-access", "this is server signOut event");
   }  
  
 }
 
 
-module.exports={initEngine};
+module.exports = { initEngine, revokeAccess };
