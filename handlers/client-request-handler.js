@@ -5,7 +5,27 @@ const userStore = require("../data-access/profile/user-store");
 const tokenStore = require("../data-access/token/token-store");
 const connKeeper = require("../helpers/connection-keeper");
 
-//Auth - flow Google
+/**
+ * 
+ * @param {AuthRequest} authRequest 
+ * 
+ * Implementation of Google Auth from GoogleSignIn SDK. Recieves an AuthRequest
+ * issued by client-SDK (android or Web) with properties idToken and device
+ * 
+ * Param Definitions:
+ * idToken->Auth-Token issued by GoogleCloud
+ * device-> device specific object created by JS-cloud-client SDK for android or Web
+ * 
+ * Working:
+ * The idToken is verified by the GoogleSDK and if the verified successfully, 
+ * and if the user is not logged in already, returns the userObject. Otherwise,
+ * rejects with proper error message.
+ * 
+ * @returns User 
+ * 
+ * 
+ * 
+ */
 function handleGoogleSignIn({idToken,device}) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -20,16 +40,15 @@ function handleGoogleSignIn({idToken,device}) {
           createdAt: new Date(),
         });
         const user = await userStore.signInOrCreate(profile);
+        //Check if the user is logged in some other device already
         const loggedIn = connKeeper.getDeviceIdFor(user["_id"]);
-        if (!loggedIn || loggedIn === device["clientID"])
-        {
+        if (!loggedIn || loggedIn === device["clientID"]) {
           connKeeper.registerUserToDevice(device["clientID"], user["_id"]);
           resolve(user);
-        }
-        else
+        } else
           reject({
-            message:'User logged in with same account on other device.'
-          }) 
+            message: "User logged in with same account on other device.",
+          });
       }
     } catch (error) {
       reject(error);
@@ -37,6 +56,12 @@ function handleGoogleSignIn({idToken,device}) {
   });
 }
 
+/**
+ * 
+ * @param {String} id 
+ * @param {User} profile 
+ * @returns 
+ */
 //Auth-Floe update User
 function handleUserUpdate(id, profile) {
   return new Promise(async (resolve, reject) => {
@@ -63,14 +88,15 @@ async function handleEmailSignIn(data) {
       }
 
       if (user) {
-      const loggedIn = connKeeper.getDeviceIdFor(user["_id"]);
-      if (!loggedIn || loggedIn === device["clientID"]) {
-        connKeeper.registerUserToDevice(device["clientID"], user["_id"]);
-        resolve(user);
-      } else
-        reject({
-          message: "User logged in with same account on other device.",
-        }); 
+        //Check if the user is logged in some other device already
+        const loggedIn = connKeeper.getDeviceIdFor(user["_id"]);
+        if (!loggedIn || loggedIn === device["clientID"]) {
+          connKeeper.registerUserToDevice(device["clientID"], user["_id"]);
+          resolve(user);
+        } else
+          reject({
+            message: "User logged in with same account on other device.",
+          });
       } else
         reject({
           message: "Unknown Error",
@@ -81,7 +107,22 @@ async function handleEmailSignIn(data) {
   });
 }
 
-async function handleDelete(user) {}
+async function handleDeleteUser(data, ack) {
+  try {
+    console.log("delete request recived");
+    const { idToken, user } = JSON.parse(data);
+
+    //Verifying token
+    const payload = await tokenStore.validateAccesToken(idToken);
+
+    if (payload) {
+      const result = await userStore.deleteUser(user);
+      if (result) ack(true, "User deleted succesfully");
+    }
+  } catch (error) {
+    ack(false, error.message);
+  }
+}
 
 //SignOut
 async function handleSignOut(_id, ack) {
@@ -92,6 +133,8 @@ async function handleSignOut(_id, ack) {
       ack("user signed out", true)})
     .catch((error) => ack(error["message"], false));
 }
+
+//handle revoke access command from server
 async function handleRevokeAccess(id) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -103,6 +146,8 @@ async function handleRevokeAccess(id) {
     }
   });
 }
+
+//handle client handshake
 async function handleClientHandshake(data, ack,socket) {
   return new Promise(async (resolve, reject) => {
     try {
@@ -147,14 +192,17 @@ function removeDevice(deviceID)
 {
   connKeeper.removeDevice(deviceID);
 }
+
 function registerUserToDevice(deviceID,userID)
 {
   connKeeper.registerUserToDevice(deviceID, userID);
 }
+
 function removeUserFromDevice(userID)
 {
   connKeeper.removeUserFromDevice(userID);
 }
+
 function getSocketIdFor(userID)
 {
   return connKeeper.getSocketIdFor(userID);
@@ -167,6 +215,7 @@ module.exports = {
   handleUserUpdate,
   handleClientHandshake,
   handleCloudSync,
+  handleDeleteUser,
   handleRevokeAccess,
   handleAuthHandshake,
   registerUserToDevice,

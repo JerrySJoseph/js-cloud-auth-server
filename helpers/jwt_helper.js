@@ -8,7 +8,7 @@ const JWT= require('jsonwebtoken');
  * sDefaultIssuerName - Default issuer name 
  */
 
-const sDefaultExpirationTime = "1h";
+const sDefaultExpirationTime = "10s";
 const sDefaultRefreshExpirationTime = "24h";
 const sDefaultIssuerName = "js-cloud-auth-api";
 const secret='sdfijn93nd-nef3-128fb2872bfcybcdfw2343ej9fun280n20f8yn27n20208c280n7208c7b8bv2087b'

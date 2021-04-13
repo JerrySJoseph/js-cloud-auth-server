@@ -64,11 +64,14 @@ function registerEvents(io) {
     socket.on("sign-out", async (_id, ack) => {
       handler.handleSignOut(_id, ack);
     });
-
+    //Fires on sync 
     socket.on('cloud-sync',(accessToken,ack)=>{
       handleCloudSync(accessToken,ack);
     })
-    
+    //Delete user
+    socket.on("delete-user", (data, ack) => {
+      handleDeleteUser(data,ack)
+    });
     //This event is for testing functionalities. Invoke any random  function inside the callblock
     socket.on("invoke", (data, ack) => {
       console.log(data);
@@ -147,10 +150,10 @@ async function handleUserUpdate(data,ack){
     //Verifying token
     const payload=await tokenStore.validateAccesToken(idToken)
     const result = await handler.handleUserUpdate(payload['_id'],user);
-    console.log(result);
-    ack('User updated successfully',JSON.stringify(result));
+    console.log('user with id: '+result['_id']+' updated successfully');
+    ack(true, "User updated successfully", JSON.stringify(result));
   } catch (error) {
-    ack(error.message,null)
+    ack(false, error.message, null);
   }
   
 }
@@ -173,16 +176,23 @@ async function handleClientHandshake(data, ack, socket) {
   return handler.handleClientHandshake(data, ack, socket);
 }
 
+//handling cloud Sync
 async function handleCloudSync(accessToken,ack)
 {
   return handler.handleCloudSync(accessToken,ack); 
 
 }
 
+//handling auth handshake
 async function handleAuthHandshake(data,ack){
   
   handler.handleAuthHandshake(data,ack);
 }
+
+async function handleDeleteUser(data,ack){
+  handler.handleDeleteUser(data,ack)  
+}
+
 //Facebook Sign In flow
 function facebookSignIn(){
 }
@@ -227,6 +237,14 @@ function revokeAccess(id)
     io.to(sid).emit("revoke-access", "this is server signOut event");
   }  
  
+}
+
+function onProfileUpdated(id, newProfile) {
+  const sid = handler.getSocketIdFor(id);
+  console.log(sid);
+  if (sid) {
+    io.to(sid).emit("on-auth-profile-update", JSON.stringify(newProfile));
+  }
 }
 
 

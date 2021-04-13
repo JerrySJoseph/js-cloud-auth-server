@@ -73,8 +73,7 @@ async function createUserEmail(user) {
 async function deleteUser({ _id }) {
   return new Promise(async (resolve, reject) => {
     try {
-      const result = await profiledb.findOneAndDelete({ _id: ObjectId(_id) });
-      resolve(result.value);
+      resolve((await profiledb.findOneAndDelete({ _id: ObjectId(_id) })).value);
     } catch (error) {
       reject(error);
     }
