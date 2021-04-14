@@ -9,6 +9,8 @@ cloudEngine.addAppSignature(
   "com.example.jscloudapi"
 );
 
+cloudEngine.allowAnonymousConnections(false);
+
 cloudEngine.initEngine(app, 3001);
 
 

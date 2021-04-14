@@ -2,18 +2,64 @@ const deviceConnection = require("./connections/client-connection");
 const db = require("./db/auth-database");
 const tokenStore = require("./data-access/token/token-store");
 const handler = require("./handlers/client-request-handler");
-const server =require('./handlers/server-request-handler');
 const errors=require('./Exceptions/JS-Cloud-Exceptions');
 
 //Saving instance of Socket for sending custom server events 
 let io=null;
 let appSignatures = [];
+let anonymousConnections = false;
 
+/**
+ * @function
+ * @param {String} signature SHA256 singature of application
+ * @param {String} packageName application packageName
+ * 
+ * @example addAppSignature('myAppSignature','com.example.myapp');
+ * 
+ * 
+ * signature-> fingerprint of application (Android->SHA256)
+ * packageName-> packageName of the application (for eg :com.jstechnologies.someapp)
+ * 
+ * The packageName and signature will be displayed in the Log output of your device
+ * in Android Studio when you Initialize the JSCloudApp. 
+ * 
+ * Adding Application signature to server. This ensures only registered application
+ * can connect to the server.
+ * 
+ * How it Works:
+ * 
+ * JS Cloud SDK android has its core dependency, which establishes a connection with 
+ * the cloud SDK when the app is opened. As a security measure, the SDK begins 
+ * Client-handshake protocol and exchanges device specific information (like deviceID,
+ * app-signature and packageName) to verify application. If the verification is not successfull,
+ * the server rejects the connection with that client and the SDk automatically disconnects from 
+ * the server. On the Other hand if verification results are successfull, the server maintains 
+ * a long lived connection to the device.
+ *   
+ * Disable Client verification:
+ * 
+ * You can override the client verification by:
+ 
+ * @example allowAnonymousConnections(true)
+ * 
+ * This function disables strict client verification and allows any application capable of connecting
+ * via websockets to connect.
+ * NOTE: This mode is not recommended for production as any client can connect to the server and can 
+ * potentially steal data or crash the server.
+ * 
+ */
 function addAppSignature(signature,packageName)
 {
   appSignatures.push({signature:signature,packageName:packageName});
 }
 
+/**
+ * @function
+ * @param {Boolean} isAllowed 
+ */
+function allowAnonymousConnections(isAllowed) {
+  anonymousConnections = isAllowed;
+}
 //Initialize Auth Engine 
 const initEngine = (app, PORT) => {
   
@@ -21,7 +67,7 @@ const initEngine = (app, PORT) => {
   //Returns a promise resolving to a WebSocket
   return new Promise( async (resolve, reject) => {
       try {
-        if(appSignatures.length<1)
+        if (!anonymousConnections && appSignatures.length < 1)
           throw new errors.NoAppSignaturesFound(
             "No app signatures registered, hence No client application will be able to connect to the server. Add atleast 1 app before intializing teh server."
           );
@@ -194,7 +240,8 @@ async function handleRefreshToken(data,ack){
 
 //handling client handshake for exchange of deviceId and socketid
 async function handleClientHandshake(data, ack, socket) {
-  const { clientID, SHA_fingerprint,packageName } = JSON.parse(data);
+
+  const { clientID, SHA_fingerprint, packageName } = JSON.parse(data);
 
   if (!verifySignature(SHA_fingerprint, packageName)) {
     console.log(
@@ -292,9 +339,10 @@ function findUserByID(id)
 
 function verifySignature(signature,packageName)
 {
- return appSignatures.some((obj)=>{
-   return signature.includes(obj.signature) && packageName.includes(obj.packageName);
- })
+  if (anonymousConnections) return true;
+  return appSignatures.some(
+    (obj) => obj.signature === signature && obj.packageName === packageName
+  );
 }
 
 function sendOnProfileUpdateEvent(id, newProfile) {
@@ -312,6 +360,7 @@ module.exports = {
   revokeAccess,
   sendEventTo,
   sendOnProfileUpdateEvent,
+  allowAnonymousConnections,
   addAppSignature,
   findUserByID,
 };
