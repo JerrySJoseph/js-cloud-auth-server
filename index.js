@@ -4,12 +4,13 @@ const cloudEngine=require('./cloud-engine');
 
 const app=express();
 
+cloudEngine.addAppSignature(
+  "zM7CDz7zzo24Mhs/h0y9fRoMBwEFHahXQM+n5lesKJ8=",
+  "com.example.jscloudapi"
+);
 
 cloudEngine.initEngine(app, 3001);
-  
-function revokeUser(id) {
-  setInterval(() => {
-    cloudEngine.revokeAccess(id);
-  }, 5000);
-}
+
+
+
 app.listen(3000,()=>console.log("HTTP Server running on Port 3000"));

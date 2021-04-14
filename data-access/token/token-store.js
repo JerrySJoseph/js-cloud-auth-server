@@ -109,4 +109,19 @@ async function singOut(_id)
   })
 }
 
-module.exports = { genAccessToken, validateAccesToken, singOut, refreshTokens };
+async function deleteToken({ _id }) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      resolve((await tokenDb.findOneAndDelete({ _id: ObjectId(_id) })).value);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+module.exports = {
+  genAccessToken,
+  validateAccesToken,
+  singOut,
+  refreshTokens,
+  deleteToken,
+};

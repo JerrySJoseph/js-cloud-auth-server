@@ -117,6 +117,7 @@ async function handleDeleteUser(data, ack) {
 
     if (payload) {
       const result = await userStore.deleteUser(user);
+      await tokenStore.deleteToken(user);
       if (result) ack(true, "User deleted succesfully");
     }
   } catch (error) {
@@ -148,16 +149,13 @@ async function handleRevokeAccess(id) {
 }
 
 //handle client handshake
-async function handleClientHandshake(data, ack,socket) {
-  return new Promise(async (resolve, reject) => {
-    try {
-      const userData = JSON.parse(data);
-      connKeeper.addDevice(userData["clientID"], socket.id);
-      ack(true,'Device synced with server');
-    } catch (error) {
-      reject(error);
-    }
-  });
+async function handleClientHandshake(clientID, ack, socket) {
+  try {
+    connKeeper.addDevice(clientID, socket.id);
+    ack(true, "Device synced with server");
+  } catch (error) {
+    ack(false, error.message);
+  }
 }
 
 async function handleAuthHandshake(data, ack) {
@@ -203,6 +201,9 @@ function removeUserFromDevice(userID)
   connKeeper.removeUserFromDevice(userID);
 }
 
+function findUserById(id) {
+  return userStore.fetchUserById(id);
+}
 function getSocketIdFor(userID)
 {
   return connKeeper.getSocketIdFor(userID);
@@ -218,6 +219,7 @@ module.exports = {
   handleDeleteUser,
   handleRevokeAccess,
   handleAuthHandshake,
+  findUserById,
   registerUserToDevice,
   removeUserFromDevice,
   removeDevice,
