@@ -1,9 +1,10 @@
 const mongoose= require('mongoose');
+const config = require("../helpers/config-parser");
 
-//Change Database name if you want to 
-const DB_NAME='js_cloud_auth_db';
-
-const DEFAULT_CONN_STRING=`mongodb://localhost:27017/${DB_NAME}`
+const DEFAULT_CONN_STRING = config.getValue(
+  "DB_CONNECTION_STRING",
+  "mongodb://localhost:27017/js-auth-db"
+);
 
 // A Promise to connect TO MongoDB
 const ConnectToDb=(connectionString=DEFAULT_CONN_STRING)=>{

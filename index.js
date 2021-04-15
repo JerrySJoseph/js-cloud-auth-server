@@ -8,11 +8,18 @@ cloudEngine.addAppSignature(
   "zM7CDz7zzo24Mhs/h0y9fRoMBwEFHahXQM+n5lesKJ8=",
   "com.example.jscloudapi"
 );
+cloudEngine.addAppSignature(
+  "zM7CDz7zzo24Mhs/h0y9fRoMBwEFHahXQM+n5lesKJ8=",
+  "com.example.tnsm_app"
+);
+
+cloudEngine.attachinvoke("some", (data, ack) => {
+  cloudEngine.revokeAccess(data);
+});
 
 cloudEngine.allowAnonymousConnections(false);
 
 cloudEngine.initEngine(app, 3001);
-
 
 
 app.listen(3000,()=>console.log("HTTP Server running on Port 3000"));

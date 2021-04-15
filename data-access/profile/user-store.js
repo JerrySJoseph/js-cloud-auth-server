@@ -21,6 +21,7 @@ async function signInOrCreate(profile) {
 async function updateProfile(id, newUser) {
   return new Promise(async (resolve, reject) => {
     try {
+      delete newUser["_id"];
       const result = await profiledb.findOneAndUpdate(
         { _id: ObjectId(id) },
         { $set: newUser },

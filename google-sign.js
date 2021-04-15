@@ -1,6 +1,32 @@
 const { OAuth2Client } = require("google-auth-library");
+const exceptions = require("./Exceptions/JS-Cloud-Exceptions");
+class GoogleSignIn {
+  constructor(GoogleClientID) {
+    if (GoogleClientID == null)
+      throw new exceptions.GoogleClientIDNotFound(
+        " Please add Google Client ID in .env file with name 'GOOGLE_CLIENT_ID'"
+      );
+    this.CLIENT_ID = GoogleClientID;
+    this.client = new OAuth2Client(GoogleClientID);
+  }
 
-const CLIENT_ID ="629362459295-krpl7a5s8cgt5b96s25jabtiotlvpkq1.apps.googleusercontent.com";
+  async verifyToken(token) {
+    return new Promise(async (resolve, reject) => {
+      try {
+        const ticket = await this.client.verifyIdToken({
+          idToken: token,
+          audience: this.CLIENT_ID,
+        });
+        resolve(ticket.getPayload());
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+}
+/*
+const CLIENT_ID =
+  "162441073530-raoqmrk7bka1s3kr8o1o58j0tktrlrvh.apps.googleusercontent.com";
 const client = new OAuth2Client(CLIENT_ID);
 
  async function verify(token) {
@@ -27,5 +53,5 @@ const client = new OAuth2Client(CLIENT_ID);
        reject(error);
      }
    });
- }
-module.exports={verifyToken};
+ }*/
+module.exports = GoogleSignIn;

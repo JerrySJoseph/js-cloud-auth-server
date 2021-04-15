@@ -1,5 +1,5 @@
 const JWT= require('jsonwebtoken');
-
+const config = require("../helpers/config-parser");
 
 /**
  * These are some useful defaults declared before hand. 
@@ -8,10 +8,14 @@ const JWT= require('jsonwebtoken');
  * sDefaultIssuerName - Default issuer name 
  */
 
-const sDefaultExpirationTime = "10s";
-const sDefaultRefreshExpirationTime = "24h";
-const sDefaultIssuerName = "js-cloud-auth-api";
-const secret='sdfijn93nd-nef3-128fb2872bfcybcdfw2343ej9fun280n20f8yn27n20208c280n7208c7b8bv2087b'
+const sDefaultExpirationTime = config.getValue("ACC_EXP", "1h");
+const sDefaultRefreshExpirationTime = config.getValue("REF_EXP", "24h");
+const sDefaultIssuerName = config.getValue("NAME", "js-cloud-auth-api");
+
+const secret = config.getValue(
+  "SECRET",
+  "sdfijn93nd-nef3-128fb2872bfcybcdfw2343ej9fun280n20f8yn27n20208c280n7208c7b8bv2087b"
+);
 
 /**
  * This function generates 256-bit HMAC SHA256 encrypted Access Token (JWT)

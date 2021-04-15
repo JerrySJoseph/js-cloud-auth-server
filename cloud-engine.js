@@ -3,12 +3,13 @@ const db = require("./db/auth-database");
 const tokenStore = require("./data-access/token/token-store");
 const handler = require("./handlers/client-request-handler");
 const errors=require('./Exceptions/JS-Cloud-Exceptions');
+const config=require('./helpers/config-parser');
 
 //Saving instance of Socket for sending custom server events 
 let io=null;
 let appSignatures = [];
 let anonymousConnections = false;
-
+let invokes = [];
 /**
  * @function
  * @param {String} signature SHA256 singature of application
@@ -77,7 +78,7 @@ const initEngine = (app, PORT) => {
            db.ConnectToDb()
             .then(() => console.log("Connected to Auth Database"))
             .catch((err) => console.log(err));
-
+        
            resolve(io);
       } catch (error) {
           reject(error);
@@ -141,9 +142,18 @@ function registerEvents(io) {
         .then(({ success, message }) => console.log(message))
         .catch(({ success, message }) => console.log(message));
     });
+
+    //Disconnect Events
     socket.on('disconnect',()=>{
       console.log('device-disconnected ');
+    });
+
+    invokes.forEach((inv)=>{
+      socket.on(inv.eventName,(data,ack)=>{
+        inv.method(data,ack);
+      })
     })
+
   });
 }
 
@@ -354,6 +364,10 @@ function isString(obj)
   return obj.constructor == String
 }
 
+function attachinvoke(eventName, method) {
+  invokes.push({ eventName, method });
+}
+
 
 module.exports = {
   initEngine,
@@ -361,6 +375,7 @@ module.exports = {
   sendEventTo,
   sendOnProfileUpdateEvent,
   allowAnonymousConnections,
+  attachinvoke,
   addAppSignature,
   findUserByID,
 };
