@@ -1,9 +1,12 @@
 //import requires dependencies
-const gSign = require("../google-sign");
+const googleSign = require("../google-sign");
 const buildProfile = require("../models/profile");
 const userStore = require("../data-access/profile/user-store");
 const tokenStore = require("../data-access/token/token-store");
 const connKeeper = require("../helpers/connection-keeper");
+const config = require("../helpers/config-parser");
+
+const gSign = new googleSign(config.getValue("GOOGLE_CLIENT_ID", null));
 
 /**
  * 
