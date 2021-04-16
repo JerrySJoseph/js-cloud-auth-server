@@ -1,5 +1,5 @@
 const mongoose= require('mongoose');
-const config = require("../helpers/config-parser");
+const config = require("../../common/config-parser");
 
 const DEFAULT_CONN_STRING = config.getValue(
   "DB_CONNECTION_STRING",

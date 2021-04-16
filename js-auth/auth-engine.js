@@ -1,108 +1,25 @@
-const deviceConnection = require("../js-core/connections/client-connection");
 const db = require("./db/auth-database");
 const tokenStore = require("./data-access/token/token-store");
 const handler = require("./handlers/client-request-handler");
-const errors = require("./Exceptions/JS-Cloud-Exceptions");
-const config = require("./helpers/config-parser");
 
 //Saving instance of Socket for sending custom server events
 let io = null;
-let appSignatures = [];
-let anonymousConnections = false;
 let invokes = [];
-/**
- * @function
- * @param {String} signature SHA256 singature of application
- * @param {String} packageName application packageName
- * 
- * @example addAppSignature('myAppSignature','com.example.myapp');
- * 
- * 
- * signature-> fingerprint of application (Android->SHA256)
- * packageName-> packageName of the application (for eg :com.jstechnologies.someapp)
- * 
- * The packageName and signature will be displayed in the Log output of your device
- * in Android Studio when you Initialize the JSCloudApp. 
- * 
- * Adding Application signature to server. This ensures only registered application
- * can connect to the server.
- * 
- * How it Works:
- * 
- * JS Cloud SDK android has its core dependency, which establishes a connection with 
- * the cloud SDK when the app is opened. As a security measure, the SDK begins 
- * Client-handshake protocol and exchanges device specific information (like deviceID,
- * app-signature and packageName) to verify application. If the verification is not successfull,
- * the server rejects the connection with that client and the SDk automatically disconnects from 
- * the server. On the Other hand if verification results are successfull, the server maintains 
- * a long lived connection to the device.
- *   
- * Disable Client verification:
- * 
- * You can override the client verification by:
- 
- * @example allowAnonymousConnections(true)
- * 
- * This function disables strict client verification and allows any application capable of connecting
- * via websockets to connect.
- * NOTE: This mode is not recommended for production as any client can connect to the server and can 
- * potentially steal data or crash the server.
- * 
- */
-function addAppSignature(signature, packageName) {
-  appSignatures.push({ signature: signature, packageName: packageName });
-}
-
-/**
- * @function
- * @param {Boolean} isAllowed
- */
-function allowAnonymousConnections(isAllowed) {
-  anonymousConnections = isAllowed;
-}
 
 async function begin(_io) {
-  if (!anonymousConnections && appSignatures.length < 1)
-    throw new errors.NoAppSignaturesFound(
-      "No app signatures registered, hence No client application will be able to connect to the server. Add atleast 1 app before intializing teh server."
-    );
-
+ 
   io = _io;
   registerEvents(io);
+  console.log("Auth Events registered");
   const database = await db.ConnectToDb();
   console.log("connected to Auth Database");
   return io;
 }
-/*
-//Initialize Auth Engine
-const initEngine = (app, PORT) => {
-  //Returns a promise resolving to a WebSocket
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (!anonymousConnections && appSignatures.length < 1)
-        throw new errors.NoAppSignaturesFound(
-          "No app signatures registered, hence No client application will be able to connect to the server. Add atleast 1 app before intializing teh server."
-        );
-      io = await deviceConnection.initConnection(app, PORT);
-      registerEvents(io);
 
-      db.ConnectToDb()
-        .then(() => console.log("Connected to Auth Database"))
-        .catch((err) => console.log(err));
-
-      resolve(io);
-    } catch (error) {
-      reject(error);
-    }
-  });
-};
-*/
 function registerEvents(io) {
   //Listening to events
   io.on("connection", (socket) => {
-    //Consoles a message when a new client connects to the server
-    console.log("Connected to Client at socket: " + socket.id);
-
+    
     //Fires when an auth-flow is intiated
     socket.on("auth-flow", async (data, ack) => {
       handleAuthFlow(data, ack, socket);
@@ -118,11 +35,7 @@ function registerEvents(io) {
       handleRefreshToken(data, ack);
     });
 
-    //Fires on client handshake (Triggered automatically from client SDK when device connects to server)
-    socket.on("client-handshake", (data, ack) => {
-      handleClientHandshake(data, ack, socket);
-    });
-
+   
     socket.on("auth-handshake", (data, ack) => {
       handleAuthHandshake(data, ack);
     });
@@ -144,11 +57,6 @@ function registerEvents(io) {
       revokeAccess(data)
         .then(({ success, message }) => console.log(message))
         .catch(({ success, message }) => console.log(message));
-    });
-
-    //Disconnect Events
-    socket.on("disconnect", () => {
-      console.log("device-disconnected ");
     });
 
     invokes.forEach((inv) => {
@@ -238,6 +146,7 @@ async function handleUserUpdate(data, ack) {
 //handling refreshTokens
 async function handleRefreshToken(data, ack) {
   try {
+    console.log("refresh-recieved");
     const tokens = await tokenStore.refreshTokens(data);
     ack(
       true,
@@ -245,26 +154,12 @@ async function handleRefreshToken(data, ack) {
       tokens.accessToken,
       tokens.refreshToken
     );
-    console.log(payload);
+   
   } catch (error) {
     ack(false, error.message, null, null);
   }
 }
 
-//handling client handshake for exchange of deviceId and socketid
-async function handleClientHandshake(data, ack, socket) {
-  const { clientID, SHA_fingerprint, packageName } = JSON.parse(data);
-
-  if (!verifySignature(SHA_fingerprint, packageName)) {
-    console.log(
-      "Signature verification failed for device -> " +
-        clientID +
-        " , Closing connection to client..."
-    );
-    return ack(false, "Application signature could not be verified");
-  }
-  return handler.handleClientHandshake(clientID, ack, socket);
-}
 
 //handling cloud Sync
 async function handleCloudSync(accessToken, ack) {
@@ -280,36 +175,6 @@ async function handleDeleteUser(data, ack) {
   handler.handleDeleteUser(data, ack);
 }
 
-//Facebook Sign In flow
-function facebookSignIn() {}
-
-//Phone Sign in Flow
-function phoneSignIn() {}
-
-//Email Sign In Flow
-function EmailSignIn(userObj) {
-  const { authMode } = userObj;
-  let user = null;
-
-  return new Promise(async (resolve, reject) => {
-    try {
-      if (authMode === "SIGN_IN") {
-        user = await authEmail.signIn(userObj["user"]);
-      } else if (authMode === "CREATE") {
-        user = await authEmail.createUser(userObj["user"]);
-      }
-
-      if (user) {
-        resolve(user);
-      } else
-        reject({
-          message: "Unknown Error",
-        });
-    } catch (error) {
-      reject(error);
-    }
-  });
-}
 
 function revokeAccess(id) {
   return sendEventTo(id, "revoke-access", "Access revoked by server");
@@ -349,12 +214,6 @@ function findUserByID(id) {
   return handler.findUserById(id);
 }
 
-function verifySignature(signature, packageName) {
-  if (anonymousConnections) return true;
-  return appSignatures.some(
-    (obj) => obj.signature === signature && obj.packageName === packageName
-  );
-}
 
 function sendOnProfileUpdateEvent(id, newProfile) {
   return sendEventTo(id, "auth-profile-update", newProfile);
@@ -373,8 +232,6 @@ module.exports = {
   revokeAccess,
   sendEventTo,
   sendOnProfileUpdateEvent,
-  allowAnonymousConnections,
   attachinvoke,
-  addAppSignature,
   findUserByID,
 };

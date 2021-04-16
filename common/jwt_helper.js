@@ -1,11 +1,11 @@
-const JWT= require('jsonwebtoken');
-const config = require("../helpers/config-parser");
+const JWT = require("jsonwebtoken");
+const config = require("../common/config-parser");
 
 /**
- * These are some useful defaults declared before hand. 
+ * These are some useful defaults declared before hand.
  * sDefaultExpirationTime - Default expiration time for access Tokens
  * sDefaultRefreshExpirationTime - Default time for expiration of refresh Tokens
- * sDefaultIssuerName - Default issuer name 
+ * sDefaultIssuerName - Default issuer name
  */
 
 const sDefaultExpirationTime = config.getValue("ACC_EXP", "1h");
@@ -20,56 +20,52 @@ const secret = config.getValue(
 /**
  * This function generates 256-bit HMAC SHA256 encrypted Access Token (JWT)
  * which includes hubID as a payload. This hubID will be used to identify
- * requests. 
+ * requests.
  * @param {String} hubID - HubID of the hub
  * @returns - a Promise which resolves to the encrypted Access Token (JWT)
  * or rejects with an error object.
  */
 
-const signAccessToken=({_id,email,name,authType})=>{
-    return new Promise((resolve,reject)=>{
-      const payload = { _id,email,name,authType };
-     
+const signAccessToken = ({ _id, email, name, authType }) => {
+  return new Promise((resolve, reject) => {
+    const payload = { _id, email, name, authType };
 
-      const options = {
-        expiresIn: sDefaultExpirationTime,
-        issuer: sDefaultIssuerName,
-      };
+    const options = {
+      expiresIn: sDefaultExpirationTime,
+      issuer: sDefaultIssuerName,
+    };
 
-      JWT.sign(payload, secret, options, (error, token) => {
-        if (error) reject(error);
-        else if (token) {
-            resolve(token);
-        }
-      });
-    })
-}
+    JWT.sign(payload, secret, options, (error, token) => {
+      if (error) reject(error);
+      else if (token) {
+        resolve(token);
+      }
+    });
+  });
+};
 /**
- * This function verifyies 256-bit HMAC SHA256 encrypted JSON Web Token 
+ * This function verifyies 256-bit HMAC SHA256 encrypted JSON Web Token
  * which includes hubID as a payload. This hubID will be used to identify
- * requests. 
+ * requests.
  * @param {String} token - JWT token supplied by the client
  * @returns - a Promise which resolves to payload or rejects with
  * an error object.
  */
-const verfifyAccessToken=(token)=>{
-    return new Promise((resolve,reject)=>{
-        try{
-            JWT.verify(token,secret,(err,payload)=>{
-                    if(err)
-                    {
-                        return reject(parseError(err));
-                    }
-                resolve(payload);
-            })
-        }catch(e)
-        {
-            console.log(e);
-            reject(e);
+const verfifyAccessToken = (token) => {
+  return new Promise((resolve, reject) => {
+    try {
+      JWT.verify(token, secret, (err, payload) => {
+        if (err) {
+          return reject(parseError(err));
         }
-         
-    })
-}
+        resolve(payload);
+      });
+    } catch (e) {
+      console.log(e);
+      reject(e);
+    }
+  });
+};
 
 function parseError(err) {
   let msg = null;
@@ -112,28 +108,25 @@ const signRefreshToken = ({ _id, email, name, authType }) => {
   });
 };
 
-const verfifyRefreshToken=(token)=>{
-    return new Promise((resolve,reject)=>{
-        try{
-            JWT.verify(token,secret,(err,payload)=>{
-                    if (err) {
-                      return reject(parseError(err));
-                    }
-                resolve(payload);
-            })
-        }catch(e)
-        {
-            console.log(e);
-            reject(e);
+const verfifyRefreshToken = (token) => {
+  return new Promise((resolve, reject) => {
+    try {
+      JWT.verify(token, secret, (err, payload) => {
+        if (err) {
+          return reject(parseError(err));
         }
-         
-    })
-}
+        resolve(payload);
+      });
+    } catch (e) {
+      console.log(e);
+      reject(e);
+    }
+  });
+};
 
-module.exports={
-    signAccessToken,
-    verfifyAccessToken,
-    signRefreshToken,
-    verfifyRefreshToken
-}
-
+module.exports = {
+  signAccessToken,
+  verfifyAccessToken,
+  signRefreshToken,
+  verfifyRefreshToken,
+};

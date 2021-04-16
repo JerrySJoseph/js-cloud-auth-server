@@ -1,6 +1,6 @@
 const tokenDb = require("mongoose").connection.collection("token_store");
 const ObjectId = require("mongodb").ObjectId;
-const jwt =require('../../helpers/jwt_helper');
+const jwt = require("../../../common/jwt_helper");
 
 //Generate Access and refresh Tokens then save to Token store
 async function genAccessToken(profile) {
