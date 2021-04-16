@@ -1,25 +1,26 @@
 const express = require("express");
-const cloudEngine=require('./cloud-engine');
+const authEngine = require("./js-auth/auth-engine");
+const deviceConnection = require("./js-core/connections/client-connection");
 
 
 const app=express();
 
-cloudEngine.addAppSignature(
+authEngine.addAppSignature(
   "zM7CDz7zzo24Mhs/h0y9fRoMBwEFHahXQM+n5lesKJ8=",
   "com.example.jscloudapi"
 );
-cloudEngine.addAppSignature(
+
+authEngine.addAppSignature(
   "zM7CDz7zzo24Mhs/h0y9fRoMBwEFHahXQM+n5lesKJ8=",
   "com.example.tnsm_app"
 );
 
-cloudEngine.attachinvoke("some", (data, ack) => {
-  cloudEngine.revokeAccess(data);
+authEngine.attachinvoke("some", (data, ack) => {
+  authEngine.revokeAccess(data);
 });
 
-cloudEngine.allowAnonymousConnections(false);
+authEngine.allowAnonymousConnections(false);
 
-cloudEngine.initEngine(app, 3001);
-
+deviceConnection.initConnection(app, 3001).then((io) => authEngine.begin(io));
 
 app.listen(3000,()=>console.log("HTTP Server running on Port 3000"));
