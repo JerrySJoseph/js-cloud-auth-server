@@ -3,7 +3,7 @@ const googleSign = require("../google-sign");
 const buildProfile = require("../models/profile");
 const userStore = require("../data-access/profile/user-store");
 const tokenStore = require("../data-access/token/token-store");
-const deviceStore = require("../../js-core/helpers/device-store");
+const deviceStore = require("../../common/device-store");
 const config = require("../../common/config-parser");
 
 const gSign = new googleSign(config.getValue("GOOGLE_CLIENT_ID", null));
@@ -184,6 +184,7 @@ async function handleCloudSync(accessToken, ack)
     if (payload) {
       const user = await userStore.fetchUserById(payload["_id"]);
       console.log("user fetched for id : " + payload["_id"]);
+      console.log(deviceStore.getInstance());
       ack(true, "user data synced successfully", JSON.stringify(user));
     }
   } catch (error) {
@@ -218,6 +219,7 @@ function findUserById(id)
 }
 function getSocketIdFor(userID)
 {
+  console.log(deviceStore.getInstance());
   return deviceStore.getInstance().getSocketIdFor(userID);
 }
 

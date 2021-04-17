@@ -1,4 +1,4 @@
-const deviceStore = require("../helpers/device-store");
+const deviceStore = require("../../common/device-store");
 
 function handleClientHandshake(data, ack, socketID) {
   const { clientID } = JSON.parse(data);

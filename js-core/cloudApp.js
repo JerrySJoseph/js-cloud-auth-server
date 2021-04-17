@@ -1,7 +1,7 @@
 const express = require("express");
 const clientConnection = require("./connections/client-connection");
 const clientHandler = require("./handlers/client-request-handlers");
-const DeviceStore = require("./helpers/device-store");
+const DeviceStore = require("../common/device-store");
 const config = require("../common/config-parser");
 const errors = require("../exceptions/JS-Cloud-Exceptions");
 
@@ -70,4 +70,9 @@ function registerEvents(io) {
 
 
 
-module.exports = { initCloudApp, attachinvoke, allowAnonymousConnections };
+module.exports = {
+  initCloudApp,
+  attachinvoke,
+  allowAnonymousConnections,
+  DeviceStore,
+};
