@@ -1,0 +1,15 @@
+{
+  "name": "js-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "cloudApp.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "^4.0.1"
+  }
+}

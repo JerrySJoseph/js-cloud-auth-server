@@ -3,7 +3,7 @@ const clientConnection = require("./connections/client-connection");
 const clientHandler = require("./handlers/client-request-handlers");
 const DeviceStore = require("./helpers/device-store");
 const config = require("../common/config-parser");
-const errors = require("../Exceptions/JS-Cloud-Exceptions");
+const errors = require("../exceptions/JS-Cloud-Exceptions");
 
 const app = express();
 //Saving instance of Socket for sending custom server events

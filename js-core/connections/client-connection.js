@@ -15,9 +15,7 @@ const initConnection = (app, PORT) => {
 
       //resolve io instance
       resolve(io);
-    } 
-    catch (e) 
-    {
+    } catch (e) {
       reject(e);
     }
   });

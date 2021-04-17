@@ -1,5 +1,5 @@
 const { OAuth2Client } = require("google-auth-library");
-const exceptions = require("../Exceptions/JS-Cloud-Exceptions");
+const exceptions = require("../exceptions/JS-Cloud-Exceptions");
 class GoogleSignIn {
   constructor(GoogleClientID) {
     if (GoogleClientID == null)

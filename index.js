@@ -1,7 +1,6 @@
 const express = require("express");
-const authEngine = require("./js-auth/auth-engine");
-const deviceConnection = require("./js-core/connections/client-connection");
-const cloudApp = require("./js-core/cloudApp");
+const authEngine = require("./js-auth");
+const cloudApp = require("./js-core");
 
 const app=express();
 

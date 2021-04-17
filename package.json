@@ -10,9 +10,8 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.17.1",
-    "google-auth-library": "^7.0.4",
     "jsonwebtoken": "^8.5.1",
-    "mongoose": "^5.12.3",
-    "socket.io": "^4.0.1"
+    "mongoose": "^5.12.3"
+   
   }
 }
