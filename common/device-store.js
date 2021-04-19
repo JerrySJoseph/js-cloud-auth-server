@@ -31,6 +31,9 @@ class DeviceStore {
   getDeviceIdFor(userID) {
     return this.userBase[userID];
   }
+  getSocketIDforDevice(deviceID) {
+    return this.deviceBase[deviceID];
+  }
 }
 
 module.exports = DeviceStore;
